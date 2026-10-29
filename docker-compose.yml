@@ -1,0 +1,55 @@
+name: esifarish
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    image: esifarish-api:latest
+
+    restart: unless-stopped
+
+    # Runs tini as PID 1 so signals are forwarded and zombies are reaped.
+    init: true
+
+    env_file:
+      - .env
+
+    environment:
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-4}
+      FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-false}
+
+    ports:
+      - "${APP_PORT:-8000}:8000"
+
+    # Lets the container reach a PostgreSQL running on the host machine
+    # via host.docker.internal (built-in on Docker Desktop, needed on Linux).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    # --- Hardening ---
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+    stop_grace_period: 30s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+    networks:
+      - esifarish_network
+
+networks:
+  esifarish_network:
+    name: esifarish_network
+    driver: bridge
